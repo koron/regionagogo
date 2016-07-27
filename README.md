@@ -48,3 +48,23 @@ b, _ := ioutil.ReadFile("geodata")
 gs.ImportGeoData(b)
 r := gs.Query(msg.Latitude, msg.Longitude)
 ```
+
+## Remarks
+
+### Japan Cities
+
+`data/japan_cities.geojson` come from <https://github.com/niiyz/JapanCityGeoJson/>.
+And it stored to repository with XZ archive, because its raw size is about
+280MB.
+
+To use regionagogo with Japan cities data:
+
+    $ unxz -k data/japan_cities.geojson.xz
+    $ go build ./cmd/gendata
+    $ ./gendata -filename data/japan_cities.geojson \
+      -fields N03_001,N03_003,N03_004,N03_007
+    $ mv geodata bindata
+    $ go-bindata -nomemcopy ./bindata
+    $ mv bindata.go cmd/regionagogo
+    $ go build ./cmd/regionagogo
+    $ ./regionagogo
