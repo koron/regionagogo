@@ -32,3 +32,6 @@ cmd/regionagogo/bindata.go
 cmd/reagionagogo/regionagogo
 cmd/gendata/geodata
 reagionagogo.linux
+
+/tmp/
+/tags
