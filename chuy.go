@@ -71,7 +71,10 @@ func (gs *GeoSearch) ImportGeoData(b []byte) error {
 	if err != nil {
 		return err
 	}
+	return gs.loadGeoData(&gd)
+}
 
+func (gs *GeoSearch) loadGeoData(gd *GeoData) error {
 	for loopID, r := range gd.RS {
 		var points []s2.Point
 
@@ -100,6 +103,15 @@ func (gs *GeoSearch) ImportGeoData(b []byte) error {
 	log.Println("loaded", len(gs.rm), "regions")
 
 	return nil
+}
+
+// ImportGeoJSON loads a geo json.
+func (gs *GeoSearch) ImportGeoJSON(filename string, fields []string) error {
+	gd, err := convertGeoJSONToData(filename, false, fields)
+	if err != nil {
+		return err
+	}
+	return gs.loadGeoData(gd)
 }
 
 // Query returns the country for the corresponding lat, lng point
@@ -147,21 +159,41 @@ func (gs *GeoSearch) Query(lat, lng float64) map[string]string {
 	return nil
 }
 
-// importGeoJSONFile will load a geo json and save the polygons into
+// ImportGeoJSONFile will load a geo json and save the polygons into
 // a msgpack file named geodata
 // fields to lookup for in GeoJSON
 func ImportGeoJSONFile(filename string, debug bool, fields []string) error {
+	geoData, err := convertGeoJSONToData(filename, debug, fields)
+	if err != nil {
+		return err
+	}
+
+	log.Println("imported", filename, len(geoData.RS), "regions")
+
+	b, err := msgpack.Marshal(*geoData)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile("geodata", b, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func convertGeoJSONToData(filename string, debug bool, fields []string) (*GeoData, error) {
 	var loopID int
 
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var geo geojson.FeatureCollection
 
 	err = json.Unmarshal(b, &geo)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var geoData GeoData
@@ -171,7 +203,7 @@ func ImportGeoJSONFile(filename string, debug bool, fields []string) error {
 	for _, f := range geo.Features {
 		geom, err := f.GetGeometry()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		rc := &s2.RegionCoverer{MinLevel: 1, MaxLevel: 30, MaxCells: 8}
@@ -187,7 +219,6 @@ func ImportGeoJSONFile(filename string, debug bool, fields []string) error {
 				// For type "MultiPolygon", the "coordinates" member must be an array of Polygon coordinate arrays.
 				// "Polygon", the "coordinates" member must be an array of LinearRing coordinate arrays.
 				// For Polygons with multiple rings, the first must be the exterior ring and any others must be interior rings or holes.
-
 
 				// reverse the slice
 				for i := len(p)/2 - 1; i >= 0; i-- {
@@ -315,7 +346,7 @@ func ImportGeoJSONFile(filename string, debug bool, fields []string) error {
 				loopID = loopID + 1
 			}
 		default:
-			return errors.New("unknown type")
+			return nil, errors.New("unknown type")
 		}
 
 	}
@@ -324,16 +355,5 @@ func ImportGeoJSONFile(filename string, debug bool, fields []string) error {
 		geoData.CL = append(geoData.CL, CellIDLoopStorage{C: k, Loops: v})
 	}
 
-	log.Println("imported", filename, len(geoData.RS), "regions")
-
-	b, err = msgpack.Marshal(geoData)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile("geodata", b, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return &geoData, nil
 }
