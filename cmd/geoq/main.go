@@ -45,14 +45,20 @@ var fields = []string{
 }
 
 func main() {
+	geojson := flag.String("geojson", "", "geojson to import")
+	bench := flag.Bool("bench", false, "benchmark mode")
 	flag.Parse()
-	if flag.NArg() < 1 {
-		log.Fatal("require a geojson file")
+	if *geojson == "" {
+		log.Fatal("require a -geojson {file}")
 	}
 	gs := regionagogo.NewGeoSearch()
-	err := gs.ImportGeoJSON(flag.Arg(0), fields)
+	err := gs.ImportGeoJSON(*geojson, fields)
 	if err != nil {
 		log.Fatal("failed to import geojson: ", err)
+	}
+	if *bench {
+		runBench(gs)
+		return
 	}
 	loop(gs)
 }

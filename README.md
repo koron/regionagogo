@@ -68,3 +68,21 @@ To use regionagogo with Japan cities data:
     $ mv bindata.go cmd/regionagogo
     $ go build ./cmd/regionagogo
     $ ./regionagogo
+
+### Performace Check
+
+```
+$ go build ./cmd/geoq
+$ ./geoq -geojson data/japan_cities.geojson -bench
+
+(snip logs)
+
+executing bench0...
+executing bench1...
+control: 72623184 (14524636.800000 QPS)
++query:  5208 (1041.600000 QPS)
+```
+
+`control` is a loop to only generate a random lat&lng.  `+query` is a loop to
+generate a random lat&lng and query it.
+
